@@ -1,0 +1,54 @@
+# 에피소드 1 — 엄마의 엄지 하나
+# lines: 대본의 한 줄 = 자막 1개. TTS는 모든 줄을 이어 붙여 "한 번에" 하나의 파일로 생성한다.
+# scene: images/ 폴더의 이미지 파일 이름(확장자 제외). 같은 scene이 이어지면 이미지 전환 없이 자막만 바뀐다.
+# style: draft → 엄마의 임시저장 문장 (진회색, 음성에 맞춰 한 글자씩 타이핑)
+
+id: ep01-mom-thumb
+title: 엄마의 엄지 하나
+
+tts:
+  model: ssfm-v31
+  language: kor
+  voice_id: ""            # 비어 있으면 .env 의 TYPECAST_VOICE_ID 사용. 딸 시점 → 차분한 여성 목소리
+  emotion: smart          # smart(문맥 기반 감정) | preset
+  emotion_preset: sad     # emotion: preset 일 때만 사용 (normal/happy/sad/angry/whisper/toneup/tonedown)
+  emotion_intensity: 1.0
+  tempo: 1.0
+  target_lufs: -16
+
+video:
+  lead_in: 0.4            # 영상 시작 후 내레이션 시작까지(초)
+  tail_hold: 1.5          # 마지막 대사 후 정지 화면 유지(초)
+  end_fade: 0.8           # 마지막 흰색 페이드아웃(초)
+  zoom_from: 1.00
+  zoom_to: 1.05
+  transition: white_dip   # white_dip(흰색으로 페이드아웃→페이드인) | crossfade
+  transition_dur: 0.35
+
+subtitle:
+  center_y: 760           # 자막 블록 세로 중심(1920 기준 약 40%) — 중심보다 약간 위
+  font_size: 64
+  max_chars: 14
+
+audio:
+  bgm: ""                 # bgm/ 폴더의 파일명. 비우면 bgm/ 첫 파일, 폴더가 비었으면 BGM 없음
+  bgm_volume_db: -22
+
+lines:
+  - {scene: scene01, text: '우리 엄마는, 무슨 말을 해도 답장이 엄지 하나였다.'}
+  - {scene: scene02, text: '"엄마, 나 합격했어!" ... 엄지 하나.'}
+  - {scene: scene03, text: '"엄마, 나 오늘 좀 힘들어." ... 또, 엄지 하나.'}
+  - {scene: scene04, text: '솔직히 서운했다. 남들 엄마는 길게도 보내던데.'}
+  - {scene: scene05, text: '엄마는 새벽 수산시장에서 생선을 파셨다.'}
+  - {scene: scene06, text: '얼음물에 갈라진 손가락은, 작은 자판 위에서 자꾸 미끄러졌다.'}
+  - {scene: scene07, text: '그해 겨울, 엄마가 쓰러지셨다.'}
+  - {scene: scene08, text: '엄마 부탁으로 휴대폰 사진을 찾다가, 임시저장함을 열었다.'}
+  - {scene: scene09, text: '거기엔, 한 번도 보내지 못한 문장들이 쌓여 있었다.'}
+  - {scene: scene09, text: '"합격 축하해 우리 딸. 엄마는 니가 자랑스러..."', style: draft}
+  - {scene: scene09, text: '"힘들면 집에 와. 엄마가 갈치 구워줄께..."', style: draft}
+  - {scene: scene10, text: '한 글자씩 꾹꾹 누르다 손님이 오면... 엄마는 결국, 엄지 하나만 보냈던 거다.'}
+  - {scene: scene11, text: '그 엄지 하나에, 다 못 쓴 편지가 통째로 들어 있었다.'}
+  - {scene: scene12, text: '엄마가 퇴원하던 날, 이번엔 내가 먼저 길게 보냈다.'}
+  - {scene: scene13, text: '답장은 이번에도 엄지. 그런데 이번엔... 두 개였다.'}
+  - {scene: scene14, text: '이제 나는 안다. 그 엄지 하나가, 얼마나 긴 편지였는지.'}
+  - {scene: scene14, text: '여러분 부모님의 답장은 어떤가요? 여러분의 이야기가 궁금합니다.'}

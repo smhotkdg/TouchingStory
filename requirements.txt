@@ -1,0 +1,8 @@
+requests>=2.31
+python-dotenv>=1.0
+PyYAML>=6.0
+numpy>=1.26
+opencv-python>=4.9
+Pillow>=10.0
+imageio-ffmpeg>=0.5    # 시스템에 ffmpeg 가 없을 때 사용
+faster-whisper>=1.0    # 싱크 교차 확인용 (첫 실행 때 모델 자동 다운로드)

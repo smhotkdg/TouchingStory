@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+episodes/*/output/
+episodes/*/images/_placeholders/
+voices_preview/
+.venv/
+venv/
