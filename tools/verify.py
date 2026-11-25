@@ -199,8 +199,10 @@ def check_whisper(r: Renderer, mp4: Path, check_dir: Path, rep: Report, model_si
     subprocess.run([ffmpeg_exe(), "-y", "-loglevel", "error", "-i", str(mp4), "-vn", "-ac", "1", "-ar", "16000",
                     str(wav)], check=True)
     model = WhisperModel(model_size, device="cpu", compute_type="int8")
+    # initial_prompt 로 대본을 주면 Whisper가 앞부분을 "이미 받아쓴 것"으로 보고 건너뛰는 일이 있어 넣지 않는다
+    # (독립적인 교차 확인이 목적이기도 함)
     segs, _ = model.transcribe(str(wav), language="ko", word_timestamps=True, vad_filter=False,
-                               initial_prompt=" ".join(l["text"] for l in r.tl["lines"])[:200])
+                               condition_on_previous_text=False)
     words = [w for s in segs for w in (s.words or [])]
     wav.unlink(missing_ok=True)
     rows, sims, offs = [], [], []
