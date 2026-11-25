@@ -13,3 +13,8 @@
 (답장이 👍 두 개 오면 성공입니다 😆)
 
 #엄마 #부모님 #엄마문자 #감동 #따뜻한이야기 #인스타툰 #쇼츠
+
+---
+Music: "Gymnopedie No 1" by Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+http://creativecommons.org/licenses/by/4.0/

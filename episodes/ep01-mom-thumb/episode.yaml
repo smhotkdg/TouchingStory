@@ -11,7 +11,7 @@ tts:
   model: ssfm-v31
   language: kor
   voice_name: 필재        # 중저음 중년 남성 — 어른이 된 아들이 회상하는 내레이션
-  voice_id: ""            # 비어 있으면 voice_name 으로 찾아서 자동 기록
+  voice_id: "tc_68257f68bc6e3c161ab5078d"            # 비어 있으면 voice_name 으로 찾아서 자동 기록
   emotion: smart          # smart(문맥 기반 감정) | preset
   emotion_preset: sad     # emotion: preset 일 때만 사용 (normal/happy/sad/angry/whisper/toneup/tonedown)
   emotion_intensity: 1.0

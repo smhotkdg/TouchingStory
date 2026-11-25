@@ -110,6 +110,9 @@ class Subtitle:
                                    "emph": self.emph[pos:pos + len(w)], "t": times[min(nsp, len(times) - 1)] - 0.1})
                 nsp += len(norm(w))
             pos += len(w) + 1
+        # 어절이 떠오르는 시간: 기본 word_fade, 단 줄 음성이 끝나기 0.15초 전까지는 다 떠오르게(다음 줄이 바로 이어질 때 대비)
+        for w in self.words:
+            w["fade"] = min(self.word_fade, max(0.12, speech_end - 0.15 - w["t"]))
 
         max_w = W - 2 * int(S["side_margin"])
         self._mc, self._maxw, self._mr = int(K["max_chars"]), max_w, int(S["max_rows"])
@@ -142,7 +145,7 @@ class Subtitle:
             return self.times[pg["c1"] - 1] + 0.02
         if self.reveal == "word":
             last = max(k for row in pg["row_words"] for k in row)
-            return self.words[last]["t"] + self.word_fade
+            return self.words[last]["t"] + self.words[last]["fade"]
         return pg.get("t0", self.show0)
 
     def cursor_visible(self, t: float) -> bool:
@@ -311,7 +314,9 @@ class Subtitle:
         if t < self.show0 or t >= self.show1:
             return None
         # 사라지는 페이드는 음성이 끝나고, 글자가 다 떠오른 뒤에 시작 (남은 시간이 짧으면 빠르게)
-        fo = min(self.fade_out, max(0.12, self.show1 - max(self.speech_end, self.full_t)))
+        # 다 보인 상태로 잠깐 머문 뒤(hold) 사라진다. 다음 줄이 바로 이어지면 hold·페이드를 짧게.
+        slack = self.show1 - max(self.speech_end, self.full_t)
+        fo = min(self.fade_out, max(0.08, slack - min(0.25, slack * 0.5)))
         a = clamp01((t - self.show0) / 0.15) * clamp01((self.show1 - t) / fo)
         for i, pg in enumerate(self.pages):
             if pg["t0"] <= t < pg["t1"]:
@@ -320,7 +325,7 @@ class Subtitle:
                 if self.reveal == "type":
                     vis = self._typed_count(t)
                 elif self.reveal == "word":
-                    vis = sum(len(norm(w["text"])) for w in self.words if t >= w["t"] + self.word_fade)
+                    vis = sum(len(norm(w["text"])) for w in self.words if t >= w["t"] + w["fade"])
                 else:
                     vis = len(self.times)
                 return i, vis, a
@@ -368,7 +373,7 @@ class Subtitle:
             if show_all or self.reveal != "word":
                 p = 1.0
             else:
-                p = clamp01((t - w["t"]) / self.word_fade)
+                p = clamp01((t - w["t"]) / w["fade"])
             if p <= 0:
                 continue
             spr, ox, oy = self._sprite(self._word_runs(k))
@@ -467,6 +472,8 @@ class Renderer:
             else:
                 show1 = self.total - float(V["end_fade"]) * 0.3
             show1 = max(show1, l["end"] + lead)
+            if self.subs:  # 앞 줄 음성이 다음 줄 직전까지 이어지면 겹치지 않게 다음 줄 등장을 살짝 늦춘다
+                show0 = min(max(show0, self.subs[-1].show1), l["start"] + lead)
             self.subs.append(Subtitle(l, S, self.fonts, self.W, lead, show0, show1, l["end"] + lead))
 
     def _load(self, path: Path) -> np.ndarray:

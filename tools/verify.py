@@ -59,30 +59,29 @@ def extract_frames(mp4: Path, idxs: list[int], out_dir: Path) -> list[Path]:
     for f in out_dir.glob("_raw_*.png"):
         f.unlink()
     expr = "+".join(f"eq(n\\,{i})" for i in idxs)
-    subprocess.run([ffmpeg_exe(), "-y", "-loglevel", "error", "-i", str(mp4), "-vf", f"select={expr}",
-                    "-vsync", "0", str(out_dir / "_raw_%03d.png")], check=True)
+    base = [ffmpeg_exe(), "-y", "-loglevel", "error", "-i", str(mp4), "-vf", f"select={expr}"]
+    # ffmpeg 7+ 는 -vsync 를 없앰 → -fps_mode passthrough, 구버전이면 -vsync 0
+    if subprocess.run(base + ["-fps_mode", "passthrough", str(out_dir / "_raw_%03d.png")]).returncode != 0:
+        subprocess.run(base + ["-vsync", "0", str(out_dir / "_raw_%03d.png")], check=True)
     return sorted(out_dir.glob("_raw_*.png"))
 
 
 def sample_times(r: Renderer):
-    """페이지마다 자막이 완전히 보이는 시점 하나."""
+    """페이지마다 자막이 완전히 보이는 시점 하나 (완전히 보이는 프레임 구간의 가운데)."""
     out = []
     for li, sub in enumerate(r.subs):
         for pi, pg in enumerate(sub.pages):
-            t0, t1 = pg["t0"] + 0.2, pg["t1"] - 0.2
-            if sub.style == "draft":
-                t0 = max(t0, sub.times[min(pg["c1"], len(sub.times)) - 1] + 0.05)
-            t = t0 if t1 <= t0 else (t0 + min(t1, t0 + 0.4)) / 2
-            # 자막이 완전히 보이는 순간 찾기 (draft 깜빡임으로 ... 이 숨은 순간은 피함)
-            ok = False
-            while t < pg["t1"]:
+            ok_frames = []
+            for k in range(int(pg["t0"] * r.fps), int(pg["t1"] * r.fps) + 1):
+                t = k / r.fps
                 st = sub.state(t)
+                # 자막이 완전히 보이는 순간 (draft 깜빡임으로 ... 이 숨은 순간은 피함)
                 if (st and st[0] == pi and st[2] > 0.99 and (st[1] is None or st[1] >= pg["c1"])
                         and not sub.cursor_visible(t)):
-                    ok = True
+                    ok_frames.append(k)
+                elif ok_frames:
                     break
-                t += 1 / r.fps
-            out.append((li, pi, t if ok else None))
+            out.append((li, pi, ok_frames[len(ok_frames) // 2] / r.fps if ok_frames else None))
     return out
 
 
@@ -151,28 +150,38 @@ def check_frames(r: Renderer, mp4: Path, check_dir: Path, rep: Report):
             missing.append(f"{li + 1}")
             continue
         got = cv2.cvtColor(cv2.imread(str(f)), cv2.COLOR_BGR2RGB)
-        base = r.frame(k / r.fps, with_subs=False)
-        diff = np.abs(got.astype(int) - base.astype(int)).max(axis=2)
-        gray = got.mean(axis=2)
-        mask = (diff > 40) & (gray < 140)  # 글자색·강조색(따뜻한 갈색)만, 흰 번짐 제외
-        mask[:band0] = False
-        mask[band1:] = False
-        mask = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)) > 0
-        cols = np.where(mask.any(axis=0))[0]
-        rows = np.where(mask.any(axis=1))[0]
+        base = r.frame(k / r.fps, with_subs=False).astype(float).mean(axis=2)
+        want = r.frame(k / r.fps, with_subs=True)
+
+        def ink(img):
+            # 글자색·강조색(따뜻한 갈색)만: 자막 때문에 "어두워진" 픽셀. 흰 외곽선·번짐은 배경을 밝게만 하므로 제외.
+            gray = img.astype(float).mean(axis=2)
+            m = ((base - gray) > 40) & (gray < 140) & (base > 150)  # 밝은 배경 위 글자만(어두운 선 경계의 압축 번짐 제외)
+            m[:band0] = False
+            m[band1:] = False
+            m = cv2.morphologyEx(m.astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)) > 0
+            return np.where(m.any(axis=0))[0], np.where(m.any(axis=1))[0]
+
+        cols, rows = ink(got)
+        ecols, _ = ink(want)
         name = f"line{li + 1:02d}_p{pi + 1}.png"
-        f.rename(check_dir / name)
-        if len(cols) < 2:
+        f.replace(check_dir / name)
+        if len(cols) < 2 or len(ecols) < 2:
             missing.append(f"{li + 1}")
             continue
         left, right = int(cols[0]), r.W - 1 - int(cols[-1])
-        d = abs(left - right)
+        eleft, eright = int(ecols[0]), r.W - 1 - int(ecols[-1])
+        # 레이아웃 자체의 중앙 정렬은 오버레이 검사(≤1px)가 보증한다. 여기서는 실제 mp4 프레임의 글자 좌우 여백이
+        # 렌더러가 의도한 프레임과 같은지(=인코딩 후에도 그대로 중앙인지) 본다. 검은 그림 위 글자는 검출되지 않으므로
+        # 의도 프레임에서도 똑같이 빠져 공정하게 비교된다.
+        d = max(abs(left - eleft), abs(right - eright))
         worst = max(worst, d)
         cy = (rows[0] + rows[-1]) / 2
-        lines.append(f"{li + 1}-p{pi + 1}: 좌{left}/우{right} (차이 {d}px), 세로중심 {cy:.0f}px")
+        note = "" if abs(eleft - eright) <= 4 else f" (어두운 그림 위 글자 제외로 검출 범위 좌{eleft}/우{eright})"
+        lines.append(f"{li + 1}-p{pi + 1}: 좌{left}/우{right}, 의도 대비 오차 {d}px, 세로중심 {cy:.0f}px{note}")
     for f in check_dir.glob("_raw_*.png"):
         f.unlink()
-    rep.add("실제 프레임 자막 가로 중앙(≤4px, 압축 오차 포함)", worst <= 4 and not missing,
+    rep.add("실제 프레임 자막 가로 중앙(의도 프레임 대비 ≤4px, 압축 오차 포함)", worst <= 4 and not missing,
             f"최대 차이 {worst}px" + (f"; 자막 미검출: {', '.join(missing)}번 줄" if missing else ""))
     return lines
 
