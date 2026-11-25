@@ -53,6 +53,42 @@ def build_payload(cfg: dict, voice_id: str, text: str) -> dict:
     }
 
 
+MODELS = ["ssfm-v31", "ssfm-v30", "ssfm-v21"]
+
+
+def resolve_voice(key: str, name: str, want_model: str) -> tuple[str, str]:
+    """한국어 보이스 이름(예: 필재) → (voice_id, 사용할 모델). 원하는 모델을 지원하지 않으면 지원하는 최신 모델로."""
+    r = requests.get(f"{API}/v3/voices", headers={"X-API-KEY": key}, timeout=60)
+    if r.status_code != 200:
+        sys.exit(f"[오류] 보이스 목록 조회 실패 {r.status_code}: {r.text[:300]}")
+    voices = r.json()
+    if isinstance(voices, dict):
+        voices = voices.get("voices") or voices.get("data") or []
+    hits = [v for v in voices if (v.get("voice_name") or {}).get("kor", "").strip() == name.strip()]
+    if not hits:
+        similar = [v["voice_name"]["kor"] for v in voices
+                   if name[:1] in (v.get("voice_name") or {}).get("kor", "")][:15]
+        sys.exit(f"[오류] '{name}' 보이스를 API 목록에서 찾지 못함. 비슷한 이름: {similar}\n"
+                 f"       (새 에디터 전용 캐릭터는 API에 없을 수 있음 → Typecast 콘솔에서 voice_id 확인 후 tts.voice_id 에 기록)")
+    v = hits[0]
+    models = [m.get("version") for m in v.get("models", [])]
+    model = want_model if want_model in models else next((m for m in MODELS if m in models), want_model)
+    emos = sorted({e for m in v.get("models", []) for e in m.get("emotions", [])})
+    print(f"[TTS] 보이스 '{name}' → {v['voice_id']} (모델 {model}, 지원 감정: {', '.join(emos)})")
+    return v["voice_id"], model
+
+
+def save_voice_to_yaml(path, voice_id: str, model: str) -> None:
+    """주석을 유지한 채 episode.yaml 의 voice_id/model 줄만 바꿔 다음부터 조회 없이 쓰게 한다."""
+    import re
+
+    s = path.read_text(encoding="utf-8")
+    s = re.sub(r'(\n  voice_id:\s*)""', rf'\g<1>"{voice_id}"', s, count=1)
+    s = re.sub(r"(\n  model:\s*)\S+", rf"\g<1>{model}", s, count=1)
+    path.write_text(s, encoding="utf-8")
+    print(f"[TTS] episode.yaml 에 voice_id 기록 → {voice_id}")
+
+
 def make_mock(text: str, wav_path, sr: int = 24000):
     """API 없이 렌더/싱크 파이프라인을 점검하기 위한 가짜 음성(글자마다 작은 톤) + 타임스탬프."""
     chars, t = [], 0.3
@@ -140,9 +176,14 @@ def main():
     key = os.getenv("TYPECAST_API_KEY", "").strip()
     if not key:
         sys.exit("[오류] .env 에 TYPECAST_API_KEY 가 없음 (.env.example 참고)")
-    voice_id = (cfg["tts"].get("voice_id") or os.getenv("TYPECAST_VOICE_ID", "")).strip()
+    voice_id = (cfg["tts"].get("voice_id") or "").strip()
+    if not voice_id and cfg["tts"].get("voice_name"):
+        voice_id, model = resolve_voice(key, cfg["tts"]["voice_name"], cfg["tts"]["model"])
+        cfg["tts"]["model"] = model
+        save_voice_to_yaml(ep_dir / "episode.yaml", voice_id, model)
+    voice_id = voice_id or os.getenv("TYPECAST_VOICE_ID", "").strip()
     if not voice_id:
-        sys.exit("[오류] voice_id 없음 → python tools/list_voices.py 로 고른 뒤 episode.yaml tts.voice_id 에 기록")
+        sys.exit("[오류] voice_id 없음 → episode.yaml 에 tts.voice_name(예: 필재) 또는 tts.voice_id 를 적어 주세요")
 
     payload = build_payload(cfg, voice_id, text)
     print(f"[TTS] Typecast 요청: {len(text)}자, voice={voice_id}, model={payload['model']}")

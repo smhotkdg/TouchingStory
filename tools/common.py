@@ -16,6 +16,7 @@ DEFAULTS = {
     "tts": {
         "model": "ssfm-v31",
         "language": "kor",
+        "voice_name": "",
         "voice_id": "",
         "emotion": "smart",
         "emotion_preset": "normal",

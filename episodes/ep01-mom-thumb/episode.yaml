@@ -1,4 +1,4 @@
-# 에피소드 1 — 엄마의 엄지 하나
+# 에피소드 1 — 엄마의 엄지 하나 (화자: 어른이 된 아들, 필재 음성)
 # lines: 대본의 한 줄 = 자막 1개. TTS는 모든 줄을 이어 붙여 "한 번에" 하나의 파일로 생성한다.
 # scene: images/ 폴더의 이미지 파일 이름(확장자 제외). 같은 scene이 이어지면 이미지 전환 없이 자막만 바뀐다.
 # style: draft → 엄마의 임시저장 문장 (진회색, 음성에 맞춰 한 글자씩 타이핑)
@@ -9,7 +9,8 @@ title: 엄마의 엄지 하나
 tts:
   model: ssfm-v31
   language: kor
-  voice_id: ""            # 비어 있으면 .env 의 TYPECAST_VOICE_ID 사용. 딸 시점 → 차분한 여성 목소리
+  voice_name: 필재        # 중저음 중년 남성 — 어른이 된 아들이 회상하는 내레이션
+  voice_id: ""            # 비어 있으면 voice_name 으로 찾아서 자동 기록
   emotion: smart          # smart(문맥 기반 감정) | preset
   emotion_preset: sad     # emotion: preset 일 때만 사용 (normal/happy/sad/angry/whisper/toneup/tonedown)
   emotion_intensity: 1.0
@@ -44,7 +45,7 @@ lines:
   - {scene: scene07, text: '그해 겨울, 엄마가 쓰러지셨다.'}
   - {scene: scene08, text: '엄마 부탁으로 휴대폰 사진을 찾다가, 임시저장함을 열었다.'}
   - {scene: scene09, text: '거기엔, 한 번도 보내지 못한 문장들이 쌓여 있었다.'}
-  - {scene: scene09, text: '"합격 축하해 우리 딸. 엄마는 니가 자랑스러..."', style: draft}
+  - {scene: scene09, text: '"합격 축하해 우리 아들. 엄마는 니가 자랑스러..."', style: draft}
   - {scene: scene09, text: '"힘들면 집에 와. 엄마가 갈치 구워줄께..."', style: draft}
   - {scene: scene10, text: '한 글자씩 꾹꾹 누르다 손님이 오면... 엄마는 결국, 엄지 하나만 보냈던 거다.'}
   - {scene: scene11, text: '그 엄지 하나에, 다 못 쓴 편지가 통째로 들어 있었다.'}

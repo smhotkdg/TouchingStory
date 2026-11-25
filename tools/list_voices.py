@@ -1,6 +1,7 @@
 """Typecast 보이스 목록 조회 (한국어 이름이 있는 보이스만).
 
 사용:
+  python tools/list_voices.py --name 필재
   python tools/list_voices.py --gender female --age young_adult
   python tools/list_voices.py --gender female --previews      # 미리듣기 mp3를 voices_preview/ 에 저장
 """
@@ -25,6 +26,7 @@ def main():
     ap.add_argument("--model", default="ssfm-v31")
     ap.add_argument("--gender", choices=["male", "female"])
     ap.add_argument("--age", choices=["child", "teenager", "young_adult", "middle_age", "elder"])
+    ap.add_argument("--name", help="한국어 이름 일부로 찾기 (예: 필재)")
     ap.add_argument("--emotion", help="이 감정을 지원하는 보이스만 (예: sad, tonedown)")
     ap.add_argument("--previews", action="store_true", help="미리듣기 mp3 저장")
     ap.add_argument("--json", action="store_true")
@@ -52,6 +54,8 @@ def main():
         if not name:
             continue
         emos = sorted({e for m in v.get("models", []) for e in m.get("emotions", [])})
+        if args.name and args.name not in name:
+            continue
         if args.emotion and args.emotion not in emos:
             continue
         rows.append({**v, "_kor": name, "_emotions": emos})

@@ -26,8 +26,9 @@ python tools/run_episode.py ep01-mom-thumb --mock --placeholders --no-whisper   
 - **대본 전체를 반드시 한 번의 요청으로 하나의 음성 파일로 생성한다.** 문장별로 나눠 생성하면 감정 흐름이 끊기므로 금지.
 - 엔드포인트 `POST /v1/text-to-speech/with-timestamps` → 음성 + 글자 단위 타임스탬프를 같이 받아 싱크 기준으로 쓴다.
 - 이미 생성된 음성은 대본이 같으면 다시 만들지 않는다(크레딧 절약). 대본을 바꿨으면 `--force-tts`.
-- voice_id 가 비어 있으면: `python tools/list_voices.py --gender female --age young_adult --previews` 로 후보를 보고,
-  이야기 화자에 맞는 차분한 목소리를 골라 `episode.yaml` 의 `tts.voice_id` 에 기록한 뒤 진행하고, 무엇을 골랐는지 보고한다.
+- **기본 목소리는 Typecast 필재**(중저음 중년 남성). `episode.yaml` 의 `tts.voice_name: 필재` 로 두면 첫 실행 때
+  API 보이스 목록에서 찾아 `tts.voice_id` 와 지원 모델을 자동 기록한다. 목록에 없으면(새 에디터 전용 등) 멈추지 말고
+  `python tools/list_voices.py --name 필재` 결과와 함께 원인을 보고한다. 다른 목소리로 임의 대체하지 않는다.
 - 감정은 기본 `smart`(문맥 기반). 너무 밝거나 어색하면 `emotion: preset`, `emotion_preset: sad` 또는 `tonedown` 으로 바꿔 재생성.
 
 ## 영상 규칙
@@ -48,6 +49,7 @@ python tools/run_episode.py ep01-mom-thumb --mock --placeholders --no-whisper   
 - FAIL 이 있으면 고쳐서 다시 렌더·검증. 플레이스홀더 이미지가 남아 있으면 업로드용이 아님.
 
 ## 대본 규칙
+- 화자는 필재 목소리에 맞게 남성(어른이 된 아들, 아빠, 남편 등) 시점으로 쓴다.
 - 마지막 줄은 "댓글 ○○! 좋아요 꾹!" 같은 직접 요청 대신 **질문으로 마무리**
   (예: "여러분 부모님의 답장은 어떤가요? 여러분의 이야기가 궁금합니다.")
 - 실화가 아닌 창작 이야기이므로 제목·설명에 "실화"라고 쓰지 않는다.
