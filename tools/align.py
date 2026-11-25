@@ -13,7 +13,7 @@ import json
 import sys
 from difflib import SequenceMatcher
 
-from common import load_episode, norm, setup_stdout, tts_text
+from common import load_episode, norm, setup_stdout, strip_markup, tts_text
 
 FAIL_RATIO = 0.80
 WARN_RATIO = 0.95
@@ -47,7 +47,7 @@ def build_timeline(ep_dir, cfg) -> dict:
     t_str = "".join(c[0] for c in tchars)
     s_chars, owner = [], []
     for li, line in enumerate(cfg["lines"]):
-        for ch in norm(line["text"]):
+        for ch in norm(strip_markup(line["text"])):
             s_chars.append(ch)
             owner.append(li)
     s_str = "".join(s_chars)
@@ -61,13 +61,13 @@ def build_timeline(ep_dir, cfg) -> dict:
     lines_out, problems = [], []
     pos = 0
     for li, line in enumerate(cfg["lines"]):
-        n = len(norm(line["text"]))
+        n = len(norm(strip_markup(line["text"])))
         idxs = list(range(pos, pos + n))
         pos += n
         matched = [i for i in idxs if i in mapping]
         ratio = len(matched) / max(n, 1)
         if not matched:
-            sys.exit(f"[오류] {li + 1}번째 줄을 음성에서 찾지 못함: {line['text']}")
+            sys.exit(f"[오류] {li + 1}번째 줄을 음성에서 찾지 못함: {strip_markup(line['text'])}")
         # 글자별 시간: 매칭된 글자는 TTS 시간, 아닌 글자는 앞뒤 사이 보간
         times = [tchars[mapping[i]][1] if i in mapping else None for i in idxs]
         ends = [tchars[mapping[i]][2] if i in mapping else None for i in idxs]
@@ -89,7 +89,8 @@ def build_timeline(ep_dir, cfg) -> dict:
             "index": li,
             "scene": line["scene"],
             "style": line.get("style", "normal"),
-            "text": line["text"],
+            "text": strip_markup(line["text"]),
+            "display": line["text"],
             "start": round(start, 3),
             "end": round(speech_end, 3),
             "match_ratio": round(ratio, 3),

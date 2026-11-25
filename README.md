@@ -23,7 +23,7 @@ copy .env.example .env      # (mac/linux: cp) 후 TYPECAST_API_KEY 입력
 | `tools/list_voices.py` | Typecast 보이스 목록·미리듣기 |
 | `tools/typecast_tts.py` | 대본 전체를 한 파일로 TTS + 타임스탬프 저장 (`--mock` 점검용) |
 | `tools/align.py` | 타임스탬프 → 줄별 시작/끝 (`timeline.json`) |
-| `tools/render.py` | 1080x1920 렌더 (중앙 정렬 크롭·줌, 흰색 페이드, 자막) |
+| `tools/render.py` | 1080x1920 렌더 (중앙 정렬 크롭·줌, 흰색 페이드, 손글씨 자막이 음성에 맞춰 어절마다 떠오름, `{강조}`) |
 | `tools/verify.py` | 싱크(타임스탬프 + Whisper 교차) · 가로 중앙 · 길이 검증 |
 | `tools/make_placeholders.py` | 이미지 없이 점검할 때 쓰는 임시 이미지 |
 | `tools/run_episode.py` | 위 과정을 한 번에 |

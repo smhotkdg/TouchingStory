@@ -41,21 +41,30 @@ DEFAULTS = {
         "preset": "veryfast",
     },
     "subtitle": {
-        "font": "",              # 비우면 assets/fonts/Gaegu-Bold.ttf (없으면 자동 다운로드)
-        "center_y": 760,
-        "font_size": 64,
+        # 내레이션: 손글씨(나눔손글씨 펜) — 딱딱하지 않고 따뜻한 느낌
+        "font": "assets/fonts/NanumPenScript-Regular.ttf",
+        "font_size": 92,
+        "line_spacing": 1.08,
         "max_chars": 14,
         "max_rows": 2,
+        "center_y": 760,
         "side_margin": 90,
-        "line_spacing": 1.28,
-        "color": "#1a1a1a",
-        "stroke_width": 7,
+        "color": "#2e2a27",          # 새까만 검정 대신 부드러운 먹색
+        "accent_color": "#9c5b3f",   # {강조} 어절 — 따뜻한 갈색
+        "stroke_width": 3,           # 얇은 흰 외곽선
         "stroke_color": "#ffffff",
-        "fade": 0.25,
-        "pre": 0.10,             # 음성 시작보다 먼저 자막을 띄우는 시간
-        "post": 0.25,            # 음성 끝난 뒤 자막 유지 시간
-        "draft": {"font_size": 56, "max_chars": 16, "color": "#444444", "blink_period": 0.45,
-                  "post": 0.9},           # 타이핑이 끝난 뒤 문장이 다 보이는 시간
+        "glow_radius": 9,            # 글자 주변 옅은 흰 번짐(배경 패널 아님)
+        "glow_spread": 9,
+        "glow_opacity": 0.85,
+        "reveal": "word",            # word: 음성에 맞춰 어절마다 떠오르며 등장 | line: 한 번에
+        "word_fade": 0.3,
+        "word_rise": 12,
+        "fade": 0.45,                # 줄이 사라지는 페이드
+        "pre": 0.10,
+        "post": 0.6,
+        # 엄마의 임시저장 문자: 둥근 고딕(고운돋움), 회색, 한 글자씩 타이핑 + 커서
+        "draft": {"font": "assets/fonts/GowunDodum-Regular.ttf", "font_size": 60, "line_spacing": 1.3,
+                  "max_chars": 16, "color": "#4a4744", "post": 0.9, "cursor": True, "blink_period": 0.5},
     },
     "audio": {
         "bgm": "",
@@ -65,8 +74,14 @@ DEFAULTS = {
     },
 }
 
-FONT_URL = "https://github.com/google/fonts/raw/main/ofl/gaegu/Gaegu-Bold.ttf"
-FONT_LICENSE_URL = "https://github.com/google/fonts/raw/main/ofl/gaegu/OFL.txt"
+# 레포에 포함된 폰트(OFL). 없으면 Google Fonts 저장소에서 내려받는다.
+FONT_DIRS = {
+    "NanumPenScript-Regular.ttf": "nanumpenscript",
+    "GowunDodum-Regular.ttf": "gowundodum",
+    "GowunBatang-Bold.ttf": "gowunbatang",
+    "Gaegu-Bold.ttf": "gaegu",
+}
+FONT_BASE = "https://raw.githubusercontent.com/google/fonts/main/ofl"
 
 
 def setup_stdout() -> None:
@@ -109,9 +124,14 @@ def load_episode(ep: str):
     return p.resolve(), cfg
 
 
+def strip_markup(s: str) -> str:
+    """자막 강조 표기 {…} 제거 → 실제로 읽는 문장."""
+    return s.replace("{", "").replace("}", "")
+
+
 def tts_text(cfg: dict) -> str:
-    """TTS에 보내는 전체 대본 (줄을 공백으로 이어 붙임)."""
-    return " ".join(line["text"] for line in cfg["lines"])
+    """TTS에 보내는 전체 대본 (줄을 공백으로 이어 붙임, 강조 표기 제거)."""
+    return " ".join(strip_markup(line["text"]) for line in cfg["lines"])
 
 
 def norm(s: str) -> str:
@@ -143,40 +163,33 @@ def find_image(ep_dir: Path, scene: str, placeholders: bool = False) -> Path | N
 
 
 def ensure_font(cfg_font: str = "") -> Path:
-    """자막 폰트 경로. 지정 폰트 → Gaegu Bold(자동 다운로드) → 맑은 고딕 Bold → Noto CJK 순."""
-    if cfg_font:
-        p = Path(cfg_font)
-        p = p if p.is_absolute() else ROOT / p
-        if p.exists():
-            return p
-        print(f"[경고] 지정 폰트 없음: {p}")
-    gaegu = ROOT / "assets" / "fonts" / "Gaegu-Bold.ttf"
-    if not gaegu.exists():
+    """자막 폰트 경로. 지정 폰트(없으면 Google Fonts에서 받기) → 맑은 고딕 Bold → Noto CJK 순."""
+    cfg_font = cfg_font or "assets/fonts/NanumPenScript-Regular.ttf"
+    p = Path(cfg_font)
+    p = p if p.is_absolute() else ROOT / p
+    if not p.exists() and p.name in FONT_DIRS:
         try:
             import requests
 
-            gaegu.parent.mkdir(parents=True, exist_ok=True)
-            r = requests.get(FONT_URL, timeout=60)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            r = requests.get(f"{FONT_BASE}/{FONT_DIRS[p.name]}/{p.name}", timeout=120)
             if r.ok and r.content[:4] in (b"\x00\x01\x00\x00", b"OTTO", b"true"):
-                gaegu.write_bytes(r.content)
-                lic = requests.get(FONT_LICENSE_URL, timeout=60)
-                if lic.ok:
-                    (gaegu.parent / "OFL-Gaegu.txt").write_bytes(lic.content)
-                print(f"[폰트] Gaegu Bold 다운로드 완료 → {gaegu}")
-        except Exception as e:  # 네트워크 없음 등
-            print(f"[경고] Gaegu 폰트 다운로드 실패: {e}")
-    if gaegu.exists():
-        return gaegu
+                p.write_bytes(r.content)
+                print(f"[폰트] 다운로드 완료 → {p}")
+        except Exception as e:
+            print(f"[경고] 폰트 다운로드 실패: {e}")
+    if p.exists():
+        return p
+    print(f"[경고] 폰트 없음: {p}")
     for cand in (
         Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts" / "malgunbd.ttf",
         Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"),
-        Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Black.ttc"),
         Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
     ):
         if cand.exists():
-            print(f"[경고] Gaegu 대신 대체 폰트 사용: {cand}")
+            print(f"[경고] 대체 폰트 사용: {cand}")
             return cand
-    sys.exit("[오류] 한글 폰트를 찾을 수 없음 → assets/fonts/ 에 Gaegu-Bold.ttf 를 넣어 주세요")
+    sys.exit("[오류] 한글 폰트를 찾을 수 없음 → assets/fonts/ 에 폰트를 넣어 주세요")
 
 
 def hex_rgb(h: str) -> tuple[int, int, int]:

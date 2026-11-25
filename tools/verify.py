@@ -77,7 +77,8 @@ def sample_times(r: Renderer):
             ok = False
             while t < pg["t1"]:
                 st = sub.state(t)
-                if st and st[0] == pi and st[2] > 0.99 and (st[1] is None or st[1] >= pg["c1"]):
+                if (st and st[0] == pi and st[2] > 0.99 and (st[1] is None or st[1] >= pg["c1"])
+                        and not sub.cursor_visible(t)):
                     ok = True
                     break
                 t += 1 / r.fps
@@ -153,7 +154,7 @@ def check_frames(r: Renderer, mp4: Path, check_dir: Path, rep: Report):
         base = r.frame(k / r.fps, with_subs=False)
         diff = np.abs(got.astype(int) - base.astype(int)).max(axis=2)
         gray = got.mean(axis=2)
-        mask = (diff > 40) & (gray < 110)
+        mask = (diff > 40) & (gray < 140)  # 글자색·강조색(따뜻한 갈색)만, 흰 번짐 제외
         mask[:band0] = False
         mask[band1:] = False
         mask = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)) > 0
